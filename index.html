@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>道具クイズ</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f39c12;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+            --bg-color: #f8f9fa;
+            --text-color: #2c3e50;
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .description {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #7f8c8d;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--primary-color);
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+
+        /* Quiz Section */
+        .question-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            min-height: 3em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .choices {
+            display: grid;
+            gap: 15px;
+        }
+
+        .choice-btn {
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+            width: 100%;
+            display: block;
+        }
+
+        .choice-btn:active {
+            transform: scale(0.98);
+        }
+
+        .choice-btn.correct {
+            background-color: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+
+        .choice-btn.wrong {
+            background-color: var(--error-color);
+            color: white;
+            border-color: var(--error-color);
+        }
+
+        /* Feedback Section */
+        #feedback {
+            margin-top: 20px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reading-text {
+            font-size: 18px;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-top: 10px;
+            animation: fadeIn 0.5s;
+        }
+
+        .audio-hint {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+
+        /* Result Screen */
+        .result-score {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin: 20px 0;
+        }
+
+        .result-comment {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .review-list {
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .review-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .review-q { font-weight: bold; font-size: 14px; }
+        .review-a { color: var(--success-color); font-size: 14px; }
+        .review-t { color: #7f8c8d; font-size: 12px; }
+
+        /* Buttons */
+        .primary-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+        }
+
+        .primary-btn:hover {
+            background: #357abd;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s forwards;
+        }
+
+        .pop-animation {
+            animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Loading / Sending Overlay */
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .card { padding: 20px; }
+            h1 { font-size: 20px; }
+            .question-text { font-size: 18px; }
+            .choice-btn { font-size: 16px; padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <div class="spinner"></div>
+        <div id="overlay-text">読み込み中...</div>
+    </div>
+
+    <div id="app">
+        <!-- Start Screen -->
+        <div id="start-screen" class="card">
+            <h1>道具クイズ</h1>
+            <p class="description">下記の説明に合う道具を答えなさい。</p>
+            <button class="primary-btn" onclick="quizApp.startQuiz()">クイズを始める</button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="card" style="display: none;">
+            <div class="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="question-count" style="font-size: 14px; color: #7f8c8d; margin-bottom: 10px;"></div>
+            <div class="question-text" id="question-text"></div>
+            <div class="choices" id="choices"></div>
+            <div id="feedback"></div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="card" style="display: none;">
+            <h1>結果発表</h1>
+            <div class="result-score" id="result-score"></div>
+            <div class="result-comment" id="result-comment"></div>
+            <div class="review-list" id="review-list"></div>
+            <button class="primary-btn" onclick="quizApp.restart()">もう一度挑戦する</button>
+            <p id="gas-status" style="margin-top: 15px; font-size: 14px; color: #7f8c8d;"></p>
+        </div>
+    </div>
+
+    <script>
+        // GAS Web App URL (User should replace this)
+        const GAS_WEBAPP_URL = 'YOUR_GAS_WEBAPP_URL_HERE';
+
+        const quizApp = {
+            allData: [],
+            currentQuestions: [],
+            currentIndex: 0,
+            score: 0,
+            timer: null,
+            timeLeft: 60,
+            isAnswering: false,
+            results: [],
+
+            async init() {
+                this.showOverlay('データを読み込み中...');
+                try {
+                    // CSV Path is relative to the HTML file
+                    const response = await fetch('itemlist.csv');
+                    if (!response.ok) throw new Error('CSVファイルの読み込みに失敗しました。');
+                    
+                    const csvText = await response.text();
+                    this.parseCSV(csvText);
+                    
+                    if (this.allData.length < 3) {
+                        throw new Error('クイズのデータが不足しています（最低3件必要です）。');
+                    }
+                    
+                    this.hideOverlay();
+                    console.log('Data loaded successfully:', this.allData.length, 'items');
+                } catch (error) {
+                    console.error(error);
+                    alert('エラー: ' + error.message);
+                    this.showOverlay('エラーが発生しました。再読み込みしてください。', true);
+                }
+            },
+
+            parseCSV(text) {
+                const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+                const data = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    // Regex to handle commas inside quotes
+                    const cols = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let char of line) {
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) {
+                            cols.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    cols.push(current.trim());
+
+                    if (cols.length >= 6) {
+                        data.push({
+                            name: cols[0].replace(/^"|"$/g, ''),
+                            nameKana: cols[1].replace(/^"|"$/g, ''),
+                            nameThai: cols[2].replace(/^"|"$/g, ''),
+                            desc: cols[4].replace(/^"|"$/g, ''),
+                            descKana: cols[5].replace(/^"|"$/g, ''),
+                            descThai: cols[6] ? cols[6].replace(/^"|"$/g, '') : ''
+                        });
+                    }
+                }
+                this.allData = data;
+                console.log('Parsed data count:', this.allData.length);
+            },
+
+            startQuiz() {
+                // Reset state
+                this.score = 0;
+                this.currentIndex = 0;
+                this.results = [];
+                
+                // Randomly pick 10 questions (or all if less than 10)
+                const shuffled = [...this.allData].sort(() => 0.5 - Math.random());
+                this.currentQuestions = shuffled.slice(0, Math.min(10, shuffled.length));
+                
+                this.showScreen('quiz-screen');
+                this.nextQuestion();
+            },
+
+            nextQuestion() {
+                if (this.currentIndex >= this.currentQuestions.length) {
+                    this.showResult();
+                    return;
+                }
+
+                this.isAnswering = false;
+                const q = this.currentQuestions[this.currentIndex];
+                
+                // Update UI
+                document.getElementById('question-count').textContent = `第 ${this.currentIndex + 1} 問 / ${this.currentQuestions.length}`;
+                document.getElementById('question-text').textContent = q.desc;
+                document.getElementById('feedback').innerHTML = '';
+                
+                // Generate choices
+                const choices = this.generateChoices(q.name);
+                const choicesContainer = document.getElementById('choices');
+                choicesContainer.innerHTML = '';
+                
+                choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn fade-in';
+                    btn.textContent = choice;
+                    btn.onclick = () => this.checkAnswer(choice, btn);
+                    choicesContainer.appendChild(btn);
+                });
+
+                // Start Timer
+                this.startTimer();
+            },
+
+            generateChoices(correctAnswer) {
+                const choices = [correctAnswer];
+                const others = this.allData
+                    .filter(item => item.name !== correctAnswer)
+                    .map(item => item.name);
+                
+                // Pick 2 random wrong answers
+                const shuffledOthers = others.sort(() => 0.5 - Math.random());
+                for (let i = 0; i < 2 && i < shuffledOthers.length; i++) {
+                    choices.push(shuffledOthers[i]);
+                }
+                
+                return choices.sort(() => 0.5 - Math.random());
+            },
+
+            startTimer() {
+                clearInterval(this.timer);
+                this.timeLeft = 60;
+                const bar = document.getElementById('progress-bar');
+                bar.style.width = '100%';
+                bar.style.backgroundColor = 'var(--primary-color)';
+
+                this.timer = setInterval(() => {
+                    this.timeLeft -= 0.1;
+                    const percentage = (this.timeLeft / 60) * 100;
+                    bar.style.width = percentage + '%';
+
+                    if (this.timeLeft <= 10) {
+                        bar.style.backgroundColor = 'var(--error-color)';
+                    }
+
+                    if (this.timeLeft <= 0) {
+                        clearInterval(this.timer);
+                        this.checkAnswer(null); // Time out
+                    }
+                }, 100);
+            },
+
+            checkAnswer(selected, btn) {
+                if (this.isAnswering) return;
+                this.isAnswering = true;
+                clearInterval(this.timer);
+
+                const q = this.currentQuestions[this.currentIndex];
+                const isCorrect = selected === q.name;
+                const feedback = document.getElementById('feedback');
+                
+                // Record result
+                this.results.push({
+                    question: q.desc,
+                    correctAnswer: q.name,
+                    thai: q.nameThai,
+                    isCorrect: isCorrect
+                });
+
+                if (isCorrect) {
+                    this.score++;
+                    if (btn) btn.classList.add('correct');
+                    feedback.innerHTML = '<div class="pop-animation" style="font-size: 40px;">⭕ 正解！</div>';
+                } else {
+                    if (btn) btn.classList.add('wrong');
+                    // Highlight correct answer
+                    const buttons = document.querySelectorAll('.choice-btn');
+                    buttons.forEach(b => {
+                        if (b.textContent === q.name) b.classList.add('correct');
+                    });
+                    feedback.innerHTML = `<div style="font-size: 40px;">❌ ${selected === null ? '時間切れ' : '不正解'}</div>`;
+                }
+
+                // Show reading kana
+                const reading = document.createElement('div');
+                reading.className = 'reading-text';
+                reading.textContent = q.descKana;
+                feedback.appendChild(reading);
+
+                // Voice hint if incorrect or timed out
+                if (!isCorrect) {
+                    const hint = document.createElement('div');
+                    hint.className = 'audio-hint';
+                    hint.textContent = '正解をクリックすると読み上げます';
+                    feedback.appendChild(hint);
+                    
+                    // Add click listener to correct button for speech
+                    const correctBtn = Array.from(document.querySelectorAll('.choice-btn')).find(b => b.textContent === q.name);
+                    if (correctBtn) {
+                        correctBtn.onclick = () => this.speak(q.name);
+                    }
+                } else {
+                    // Auto speak on correct
+                    this.speak(q.name);
+                }
+
+                // Next question after delay
+                setTimeout(() => {
+                    this.currentIndex++;
+                    this.nextQuestion();
+                }, 3000);
+            },
+
+            speak(text) {
+                if ('speechSynthesis' in window) {
+                    const uttr = new SpeechSynthesisUtterance(text);
+                    uttr.lang = 'ja-JP';
+                    window.speechSynthesis.speak(uttr);
+                }
+            },
+
+            showResult() {
+                this.showScreen('result-screen');
+                const rate = Math.round((this.score / this.currentQuestions.length) * 100);
+                document.getElementById('result-score').textContent = `${this.score} / ${this.currentQuestions.length}`;
+                
+                let comment = '';
+                if (rate === 100) comment = '完璧です！道具マスターですね！';
+                else if (rate >= 80) comment = '素晴らしい！あと少しで満点です。';
+                else if (rate >= 50) comment = 'その調子です！繰り返し練習しましょう。';
+                else comment = 'まずは道具の名前を覚えることから始めましょう。';
+                
+                document.getElementById('result-comment').textContent = `正答率: ${rate}% \n ${comment}`;
+
+                // Review list
+                const list = document.getElementById('review-list');
+                list.innerHTML = '';
+                this.results.forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'review-item';
+                    item.innerHTML = `
+                        <div class="review-q">${r.isCorrect ? '✅' : '❌'} ${r.question}</div>
+                        <div class="review-a">正解: ${r.correctAnswer}</div>
+                        <div class="review-t">タイ語: ${r.thai}</div>
+                    `;
+                    list.appendChild(item);
+                });
+
+                // Send to GAS
+                this.sendToGAS(this.score, rate);
+            },
+
+            async sendToGAS(score, rate) {
+                if (GAS_WEBAPP_URL === 'YOUR_GAS_WEBAPP_URL_HERE') {
+                    document.getElementById('gas-status').textContent = '※GASのURLが設定されていないため、送信をスキップしました。';
+                    return;
+                }
+
+                document.getElementById('gas-status').textContent = '結果を送信中...';
+                try {
+                    const response = await fetch(GAS_WEBAPP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', // GAS often requires no-cors for simple POST
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            timestamp: new Date().toLocaleString('ja-JP'),
+                            score: score,
+                            rate: rate + '%'
+                        })
+                    });
+                    document.getElementById('gas-status').textContent = '結果を送信しました。';
+                } catch (error) {
+                    console.error('GAS Error:', error);
+                    document.getElementById('gas-status').textContent = '送信に失敗しました。';
+                }
+            },
+
+            restart() {
+                this.showScreen('start-screen');
+            },
+
+            showScreen(id) {
+                ['start-screen', 'quiz-screen', 'result-screen'].forEach(s => {
+                    document.getElementById(s).style.display = (s === id) ? 'block' : 'none';
+                });
+            },
+
+            showOverlay(text, noSpinner = false) {
+                const overlay = document.getElementById('overlay');
+                const spinner = overlay.querySelector('.spinner');
+                document.getElementById('overlay-text').textContent = text;
+                spinner.style.display = noSpinner ? 'none' : 'block';
+                overlay.style.display = 'flex';
+            },
+
+            hideOverlay() {
+                document.getElementById('overlay').style.display = 'none';
+            }
+        };
+
+        // Start initialization
+        window.onload = () => quizApp.init();
+    </script>
+</body>
+</html>
